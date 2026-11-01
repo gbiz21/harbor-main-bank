@@ -1,0 +1,20 @@
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars.local
+crash.log
+
+# secrets and local
+.env
+.envrc.local
+*.pfx
+*.pem
+*.key
+kubeconfig*
+.azure/
+
+# os / editor
+.DS_Store
+.vscode/settings.json
