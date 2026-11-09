@@ -31,12 +31,23 @@ command -v helm     >/dev/null || curl -fsSL https://raw.githubusercontent.com/h
 pip3 install --user --break-system-packages pre-commit checkov
 
 # tflint, tfsec, terraform-docs, infracost
-command -v tflint  >/dev/null || curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-command -v tfsec   >/dev/null || curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+if ! command -v tflint >/dev/null; then
+  # pinned release download instead of curl | bash; the install script URL has 404'd before
+  url=$(curl -fsSL https://api.github.com/repos/terraform-linters/tflint/releases/latest | jq -r '.assets[] | select(.name=="tflint_linux_amd64.zip") | .browser_download_url')
+  curl -fsSL "$url" -o /tmp/tflint.zip && sudo unzip -oq /tmp/tflint.zip -d /usr/local/bin && sudo chmod 755 /usr/local/bin/tflint
+fi
+if ! command -v trivy >/dev/null; then
+  # tfsec is archived; Trivy is its successor and covers Terraform misconfig scanning
+  curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+  echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list >/dev/null
+  sudo apt-get update && sudo apt-get install -y trivy
+fi
 command -v infracost >/dev/null || curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
 
 # direnv hook
 grep -q 'direnv hook bash' ~/.bashrc || echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
+grep -q 'HOME/.local/bin' ~/.bashrc || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 
 echo "Done. Versions:"
-terraform version | head -1; az version --query '"azure-cli"' -o tsv; gh --version | head -1; kubectl version --client --short 2>/dev/null || kubectl version --client
+export PATH="$HOME/.local/bin:$PATH"
+terraform version | head -1; az version --query '"azure-cli"' -o tsv; gh --version | head -1; kubectl version --client 2>/dev/null | head -1; helm version --short; tflint --version | head -1; trivy --version | head -1; infracost --version; pre-commit --version; checkov --version
